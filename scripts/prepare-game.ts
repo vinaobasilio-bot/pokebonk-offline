@@ -218,6 +218,27 @@ for(const [key,data] of files){
   const renamed=source.replaceAll('₽','PD').replace(/Pok[eé]d[oó]l(?:ar(?:es)?|lares)/gi,'Pontos de Duelo');
   if(renamed!==source)files.set(key,Buffer.from(renamed));
 }
+const fieldMain=contents(mainKey);
+const fieldMenus=contents(potRenderModule);
+const fieldRender='this.player.render(),this.coop?.render()';
+const fieldDispose='dispose(){disposeDragon(this);Rr(0),this.coop?.dispose()';
+const baseDispose='dispose(){Rr(0),this.coop?.dispose()';
+const fieldHurt='hurt(e,t,n,r=NaN,i=NaN,a=!1,o=0,s=n,c={}){let l=this.run;';
+const fieldStrike='let l=i.$fm71sz(e),u=t,d=1;';
+const fieldBag='...i.map(r=>Z(`button`,{class:`rg-boost`';
+const fieldHooks=[[fieldMain,fieldRender],[fieldMain,fieldHurt],[fieldMenus,fieldStrike],[fieldMenus,fieldBag]];
+for(const [source,hook] of fieldHooks)if(source.split(hook).length!==2)throw new Error('Ponto da Magia de Campo mudou: '+hook);
+const disposeHook=fieldMain.includes(fieldDispose)?fieldDispose:baseDispose;
+if(fieldMain.split(disposeHook).length!==2)throw new Error('Ponto de descarte da Umi mudou');
+files.set(mainKey,Buffer.from("import {updateUmi,disposeUmi,umiDamage} from './umi.js';\n"+fieldMain
+  .replace(fieldRender,'updateUmi(this),'+fieldRender)
+  .replace(disposeHook,disposeHook.replace('dispose(){','dispose(){disposeUmi(this);'))
+  .replace(fieldHurt,fieldHurt+'e=umiDamage(l,e,s>=0&&l.enemies.$x0f2e7(s)?l.enemies.$fm71sz(s):null,this.types);')));
+files.set(potRenderModule,Buffer.from("import {umiStock,umiArt,umiDamage} from './umi.js';\n"+fieldMenus
+  .replace(fieldStrike,'let l=i.$fm71sz(e),u=n.fixed?t:umiDamage(r,t,n.slot>=10?r.allies.typesFor(n.slot):o.types,l),d=1;')
+  .replace(fieldBag,'Z(`div`,{class:`rg-boost`},Z(`img`,{src:umiArt,alt:``,style:{width:`24px`}}),Z(`span`,{},Z(`b`,{},`Umi`),Z(`small`,{},`Magia de Campo · use durante a partida`)),Z(`i`,{},`×${umiStock()}`)),'+fieldBag)));
+files.set('assets/umi.js',await readFile('mods/yugioh/umi.js'));
+files.set('assets/umi.jpg',await readFile('mods/yugioh/umi.jpg'));
 files.set('version.json', Buffer.from(JSON.stringify({build:buildId,version})));
 files.set('resource-audit.json',Buffer.from(JSON.stringify({contractDigest:resourceContractDigest(resourceContract)})));
 files.set('offline-build.json', Buffer.from(JSON.stringify({upstreamBuild:buildId,upstreamVersion:version,offlineVersion:await offlineVersion(),sourceDigest:await sourceDigest(snapshotRoot),variant:'unlock-all',league:info.roster.length,lab:info.lab.length,items:info.items.length,achievements:info.quests.length,medals:info.biomes.filter(b=>Number.isFinite(b.size)).length*3,medalRank:info.medalRanks.length,statusIcons,reactionIcons,itemIcons,builder:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()},null,2)));
