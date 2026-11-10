@@ -148,6 +148,13 @@ if(Object.keys(activeModels).length){
   files.set('assets/yugioh/dragon-model.js',dragonModule);
   files.set('assets/yugioh/roster.js',Buffer.from('export default '+JSON.stringify(activeModels)+';'));
 }
+// Use the same field pot for paid, free and cursed pickups.
+const pot=await readFile('mods/yugioh/pot-of-greed.glb');
+for(const kind of ['chest','freechest','cursedchest']){
+  const key=`assets/models/${kind}.glb`;
+  if(!files.has(key))throw new Error(`Modelo do item de campo ausente: ${key}`);
+  files.set(key,pot);
+}
 files.set('version.json', Buffer.from(JSON.stringify({build:buildId,version})));
 files.set('resource-audit.json',Buffer.from(JSON.stringify({contractDigest:resourceContractDigest(resourceContract)})));
 files.set('offline-build.json', Buffer.from(JSON.stringify({upstreamBuild:buildId,upstreamVersion:version,offlineVersion:await offlineVersion(),sourceDigest:await sourceDigest(snapshotRoot),variant:'unlock-all',league:info.roster.length,lab:info.lab.length,items:info.items.length,achievements:info.quests.length,medals:info.biomes.filter(b=>Number.isFinite(b.size)).length*3,medalRank:info.medalRanks.length,statusIcons,reactionIcons,itemIcons,builder:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()},null,2)));
