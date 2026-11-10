@@ -152,6 +152,9 @@ if(Object.keys(activeModels).length){
 const sourcePot=await readFile('mods/yugioh/pot-of-greed.glb');
 const potJsonLength=sourcePot.readUInt32LE(12);
 const potGltf=JSON.parse(sourcePot.toString('utf8',20,20+potJsonLength));
+const potRoot=potGltf.nodes[potGltf.scenes[potGltf.scene??0].nodes[0]];
+potRoot.scale=potRoot.scale.map((value:number)=>value*2);
+potRoot.translation=potRoot.translation.map((value:number)=>value*2);
 // Use the original albedo without the field lights darkening it.
 const unlit='KHR_materials_unlit';
 potGltf.extensionsUsed=[...new Set([...(potGltf.extensionsUsed??[]),unlit])];
