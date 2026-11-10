@@ -2,7 +2,7 @@ import http from 'node:http';
 import path from 'node:path';
 import { readFile } from 'node:fs/promises';
 const root=path.resolve(process.argv[2]??'build/game');
-const mime: Record<string,string>={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.png':'image/png','.jpg':'image/jpeg','.svg':'image/svg+xml','.glb':'model/gltf-binary','.woff':'font/woff','.woff2':'font/woff2','.ogg':'audio/ogg','.webmanifest':'application/manifest+json'};
+const mime: Record<string,string>={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.webp':'image/webp','.png':'image/png','.jpg':'image/jpeg','.svg':'image/svg+xml','.glb':'model/gltf-binary','.woff':'font/woff','.woff2':'font/woff2','.ogg':'audio/ogg','.webmanifest':'application/manifest+json'};
 export function createStaticServer(directory=root,mount='/') {return http.createServer(async(req,res)=>{
  try{
   const url=new URL(req.url??'/','http://localhost');

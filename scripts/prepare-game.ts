@@ -1,3 +1,4 @@
+import {expandRoster} from './expand-roster.ts';
 import {patchOfflineStorageError} from './offline-storage-error.ts';
 import {mkdir,readFile,writeFile,rm} from 'node:fs/promises';
 import path from 'node:path';
@@ -52,7 +53,7 @@ const dragonName='Dragão Supremo de Olhos Azuis';
 const dragonAtlas=await readFile('mods/yugioh/dragon-atlas.png');
 const dragonIcon=await readFile('mods/yugioh/dragon-icon.png');
 const dragonPortrait=await readFile('mods/yugioh/dragon-portrait.png');
-const catalog=JSON.parse(contents('data/pokemon.json'));
+const catalog=JSON.parse(contents('data/pokemon.json')) as {id:number;family:number;name:string}[];
 const sprites=JSON.parse(contents('data/sprites.json'));
 const dragonStages=[4,5,6];
 for(const id of dragonStages){
@@ -115,6 +116,11 @@ for(const asset of availableModels){
     }
   }
 }
+const portraits=await expandRoster(files,catalog,info.roster,activeModels,displayNames);
+const marker='${Mc}assets/${e}?v=';
+const portraitConfig=contents(configKey);
+if(portraitConfig.split(marker).length!==2)throw new Error('Resolvedor de retratos incompatível');
+files.set(configKey,Buffer.from('const yugiohPortraits='+JSON.stringify(portraits)+';\n'+portraitConfig.replace(marker,'${Mc}assets/${yugiohPortraits[e]??e}?v=')));
 for(const entry of catalog){
   const name=displayNames.get(entry.id);
   if(name)entry.name=name;

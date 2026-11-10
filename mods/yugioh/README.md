@@ -1,6 +1,6 @@
 # PokéBonk Offline com Yu-Gi-Oh! — teste
 
-Na Liga, os primeiros slots incluem 18 monstros do Yugibonk. Seus modelos 3D aparecem durante a partida e mantêm a aparência nas evoluções. A preparação baixa os modelos do Yugibonk. Os mapas, ataques e atributos usam o PokéBonk.
+A Liga inclui 138 monstros jogáveis de Yu-Gi-Oh!. A preparação baixa os 120 modelos e retratos adicionais do Yuginimo e guarda os arquivos em cache. Os modelos usam movimento procedural por família, incluindo movimento de asas nos modelos com rig compatível. Ataques, mapas e atributos usam o PokéBonk.
 
 Com Node.js 24.12+ e pnpm 10.33.2, na pasta do projeto:
 
