@@ -25,7 +25,7 @@ function flood(run) {
     transparent: true, depthWrite: false,
     uniforms: { clock: { value: 0 }, spread: { value: 0 }, origin: { value: run.player.pos.clone() }, fade: { value: 1 } },
     vertexShader: 'varying vec2 ground; void main(){ground=position.xz;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
-    fragmentShader: 'varying vec2 ground; uniform float clock,spread,fade; uniform vec3 origin; void main(){float dist=distance(ground,origin.xz);if(dist>spread)discard;float wave=sin(ground.x*1.5+ground.y*.8-clock*3.)*.5+.5;float ripple=sin(ground.y*2.1-ground.x*.62+clock*2.)*.5+.5;float foam=smoothstep(.76,.97,wave*ripple)+1.-smoothstep(0.,2.,spread-dist);gl_FragColor=vec4(mix(vec3(.03,.31,.62),vec3(.36,.88,1.),clamp(foam*.75+wave*.15,0.,1.)),fade*(.40+foam*.13));}',
+    fragmentShader: 'varying vec2 ground; uniform float clock,spread,fade; uniform vec3 origin; void main(){float dist=distance(ground,origin.xz);if(dist>spread)discard;float wave=sin(ground.x*1.5+ground.y*.8-clock*3.)*.5+.5;float crest=sin(ground.x*.68+ground.y*.36-clock*1.8+sin(ground.y*.19+clock*.55)*.48);float foam=.24*smoothstep(.88,.995,crest)+1.-smoothstep(0.,2.,spread-dist);gl_FragColor=vec4(mix(vec3(.03,.31,.62),vec3(.36,.88,1.),clamp(foam*.75+wave*.15,0.,1.)),fade*(.40+foam*.13));}',
   });
   const mesh = new Mesh(geometry, material);
   run.r.scene.add(mesh);
