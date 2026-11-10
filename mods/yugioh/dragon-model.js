@@ -5,6 +5,8 @@ import { motions, wings } from './motions.js';
 const dragons = new WeakMap();
 const sizes = { 1: 2.8, 7: 5.2, 10: 2.8, 16: 3.8, 21: 4.3, 23: 3.7, 27: 3.3, 32: 3.6, 37: 3.3 };
 const flyingDragons = new Set([4, 7, 10, 13, 19, 41, 50]);
+// Only models with distinct left and right legs use the procedural stride.
+const bipedSlots = new Set([114,115,127,145,191,214,226,231]);
 const fasterWings = new Set([7, 10]);
 
 export function canGlideDragon(player) {
@@ -58,11 +60,17 @@ export function drawDragon(player, x, z) {
       mesh.morphTargetInfluences[0] = player.dead ? 0 : airborne ? .55 : .5 + .5 * wave;
       mesh.morphTargetInfluences[1] = player.dead || airborne ? 0 : .5 - .5 * wave;
     }
-    const stride = run.time * (kind === 'heavy' ? 7 : 11);
-    state.motionRoot.position.y = player.dead ? 0 : floating ? .23 + .11 * wave : moving ? Math.abs(Math.sin(stride)) * (kind === 'heavy' ? .09 : .18) : 0;
-    state.motionRoot.rotation.x = moving && !player.dead ? (floating ? .11 : .065 + Math.cos(stride) * .035) : 0;
-    state.motionRoot.rotation.z = moving && !player.dead ? Math.sin(stride) * (floating ? .025 : .095) : 0;
-    state.motionRoot.scale.y = !moving && !floating && !player.dead ? 1 + .017 * Math.sin(run.time * 3) : 1;
+    const dt = Math.max(0, Math.min(.05, run.time - (state.lastMotionTime ?? run.time)));
+    state.lastMotionTime = run.time;
+    if (moving && player.grounded && !player.dead) state.step += player.speedNow * dt * 3.1;
+    const stride = moving && player.grounded && !player.dead ? Math.sin(state.step) : 0;
+    for (const {mesh} of state.legMeshes) {
+      mesh.morphTargetInfluences[0] = Math.max(0, stride);
+      mesh.morphTargetInfluences[1] = Math.max(0, -stride);
+    }
+    state.motionRoot.position.y = !player.dead && floating ? .23 + .11 * wave : 0;
+    state.motionRoot.rotation.x = moving && !player.dead ? (floating ? .11 : .045) : 0;
+    state.motionRoot.rotation.z = 0;
   }
   return true;
 }
@@ -93,6 +101,48 @@ function installWings(model, rig) {
       }
       return new Float32BufferAttribute(values, 3);
     });
+    mesh.geometry = geometry;
+    mesh.updateMorphTargets();
+    mesh.frustumCulled = false;
+    meshes.push({mesh,original});
+  });
+  return meshes;
+}
+
+function installLegs(model, bounds) {
+  model.updateMatrixWorld(true);
+  const center = bounds.getCenter(new Vector3());
+  const size = bounds.getSize(new Vector3());
+  const hip = bounds.min.y + size.y * .43;
+  const meshes = [];
+  const point = new Vector3();
+  const moved = new Vector3();
+
+  model.traverse(mesh => {
+    if (!mesh.isMesh || mesh.isSkinnedMesh || mesh.geometry.morphAttributes.position?.length) return;
+    const original = mesh.geometry;
+    const base = original.attributes.position;
+    const inverse = mesh.matrixWorld.clone().invert();
+    const poses = [new Float32Array(base.count * 3), new Float32Array(base.count * 3)];
+    let affected = false;
+    for (let i = 0; i < base.count; i++) {
+      point.fromBufferAttribute(base, i).applyMatrix4(mesh.matrixWorld);
+      const lateral = point.x - center.x;
+      if (point.y >= hip || Math.abs(lateral) < size.x * .055) continue;
+      affected = true;
+      const weight = Math.min(1, (hip - point.y) / (size.y * .29));
+      for (let pose = 0; pose < 2; pose++) {
+        const angle = Math.sign(lateral) * (pose === 0 ? 1 : -1) * .38 * weight;
+        const dy = point.y - hip, dz = point.z - center.z;
+        moved.set(point.x, hip + dy * Math.cos(angle) - dz * Math.sin(angle),
+          center.z + dy * Math.sin(angle) + dz * Math.cos(angle)).applyMatrix4(inverse);
+        poses[pose].set([moved.x - base.getX(i), moved.y - base.getY(i), moved.z - base.getZ(i)], i * 3);
+      }
+    }
+    if (!affected) return;
+    const geometry = original.clone();
+    geometry.morphTargetsRelative = true;
+    geometry.morphAttributes.position = poses.map(pose => new Float32BufferAttribute(pose, 3));
     mesh.geometry = geometry;
     mesh.updateMorphTargets();
     mesh.frustumCulled = false;
@@ -142,6 +192,7 @@ async function loadDragon(run, state, modelId) {
   });
   for (const material of materials.keys()) material.dispose();
 
+  const legMeshes = bipedSlots.has(modelId) ? installLegs(model, bounds) : [];
   model.scale.multiplyScalar(scale);
   model.position.sub(new Vector3(center.x, bounds.min.y, center.z).multiplyScalar(scale));
   const group = new Group();
@@ -156,7 +207,7 @@ async function loadDragon(run, state, modelId) {
   const idle = bindClip(model, idleClip);
   const movement = movementClip ? bindClip(model, movementClip) : idle;
   run.r.scene.add(group);
-  Object.assign(state, { group, model, idle, movement, motionRoot, wingMeshes:installWings(model, wings[modelId]) });
+  Object.assign(state, { group, model, idle, movement, motionRoot, legMeshes, step:0, wingMeshes:installWings(model, wings[modelId]) });
 }
 
 function bindClip(model, clip) {
@@ -179,7 +230,7 @@ export function disposeDragon(run) {
   if (!state) return;
   state.disposed = true;
   state.group?.removeFromParent();
-  for (const {mesh, original} of state.wingMeshes ?? []) {
+  for (const {mesh, original} of [...(state.wingMeshes ?? []), ...(state.legMeshes ?? [])]) {
     mesh.geometry.dispose();
     mesh.geometry = original;
   }
