@@ -2,6 +2,14 @@ import { I as Group, g as Box3, bt as Vector3, p as GLTFLoader, q as MeshBasicMa
 import roster from './roster.js';
 
 const dragons = new WeakMap();
+const sizes = { 1: 2.8, 7: 5.2, 10: 2.8, 16: 3.8, 21: 4.3, 23: 3.7, 27: 3.3, 37: 3.3 };
+const flyingDragons = new Set([4, 7, 10, 13, 19, 41, 50]);
+const fasterWings = new Set([7, 10]);
+
+export function canGlideDragon(player) {
+  const id = roster[player.run.startSpecies];
+  return player.run.player === player && flyingDragons.has(id) && roster[player.speciesId] === id;
+}
 
 
 export function drawDragon(player, x, z) {
@@ -21,14 +29,22 @@ export function drawDragon(player, x, z) {
   }
   if (!state.group) return false;
 
-  const { group, tracks, duration } = state;
+  const { group } = state;
+  const airborne = !player.grounded && !player.diving && run.input.down('Space');
+  const moving = player.speedNow > 0.6 || airborne;
+  const animation = moving ? state.flight : state.idle;
+  if (state.animation !== animation) {
+    state.animation = animation;
+    state.animationStart = run.time;
+  }
   group.visible = true;
   group.position.copy(player.pos);
   group.rotation.y = Math.atan2(x, z);
   group.rotation.z = player.dead ? -1.2 : 0;
   group.scale.setScalar(player.renderScale || 1);
-  const time = duration > 0 ? run.time % duration : 0;
-  for (const { target, property, interpolant } of tracks) {
+  const rate = fasterWings.has(modelId) ? 1.35 : 1;
+  const time = animation.duration > 0 ? ((run.time - state.animationStart) * rate) % animation.duration : 0;
+  for (const { target, property, interpolant } of animation.tracks) {
     target[property].fromArray(interpolant.evaluate(time));
   }
   return true;
@@ -45,7 +61,7 @@ async function loadDragon(run, state, modelId) {
   const bounds = new Box3().setFromObject(model);
   const size = bounds.getSize(new Vector3());
   const center = bounds.getCenter(new Vector3());
-  const scale = (modelId === 1 ? 2.8 : modelId === 10 ? 3.5 : 4.8) / Math.max(size.x, size.y, size.z);
+  const scale = (sizes[modelId] ?? 4.8) / Math.max(size.x, size.y, size.z);
   if (!Number.isFinite(scale) || scale <= 0) {
     releaseModel(model);
     return;
@@ -80,7 +96,16 @@ async function loadDragon(run, state, modelId) {
   const group = new Group();
   group.add(model);
   group.visible = false;
-  const clip = gltf.animations.find(animation => animation.name === 'Pairar' || animation.name === 'Flutuar' || animation.name === 'Parado');
+  const findClip = names => names.map(name => gltf.animations.find(clip => clip.name === name)).find(Boolean);
+  const idleClip = findClip(['Pairar', 'Flutuar', 'Parado']);
+  const flightClip = flyingDragons.has(modelId) ? findClip(['Voo rápido', 'Correr', 'Voar', 'Deslizar']) : null;
+  const idle = bindClip(model, idleClip);
+  const flight = flightClip ? bindClip(model, flightClip) : idle;
+  run.r.scene.add(group);
+  Object.assign(state, { group, model, idle, flight });
+}
+
+function bindClip(model, clip) {
   const tracks = [];
   for (const track of clip?.tracks ?? []) {
     const split = track.name.lastIndexOf('.');
@@ -92,8 +117,7 @@ async function loadDragon(run, state, modelId) {
       tracks.push({ target, property, interpolant: track.createInterpolant() });
     }
   }
-  run.r.scene.add(group);
-  Object.assign(state, { group, model, tracks, duration: clip?.duration ?? 0 });
+  return { tracks, duration: clip?.duration ?? 0 };
 }
 
 export function disposeDragon(run) {

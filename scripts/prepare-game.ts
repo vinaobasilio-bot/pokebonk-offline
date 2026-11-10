@@ -131,14 +131,18 @@ for(const [key,data] of files){
 if(Object.keys(activeModels).length){
   const playerDraw='t.push(this.pos.x,this.pos.y,this.pos.z,n,r,l,this.renderScale,';
   const runDispose='dispose(){Rr(0),this.coop?.dispose()';
+  const glide='let ae=this.types.includes(`flying`)||this.floats;';
+  const glideSteer='(this.types.includes(`flying`)||this.floats)&&!this.diving&&n.down(`Space`)';
   const game=contents(mainKey);
-  for(const hook of [playerDraw,runDispose]){
+  for(const hook of [playerDraw,runDispose,glide,glideSteer]){
     if(game.split(hook).length!==2)throw new Error('Ponto de integração 3D mudou no PokéBonk');
   }
   const dragonModule=await readFile('mods/yugioh/dragon-model.js');
   files.set(mainKey,Buffer.from(
-    "import {drawDragon,disposeDragon} from './yugioh/dragon-model.js';\n"+
+    "import {drawDragon,disposeDragon,canGlideDragon} from './yugioh/dragon-model.js';\n"+
     game.replace(playerDraw,'drawDragon(this,o,s)||'+playerDraw)
+        .replace(glide,glide.slice(0,-1)+'||canGlideDragon(this);')
+        .replace(glideSteer,glideSteer.replace('||this.floats)', '||this.floats||canGlideDragon(this))'))
         .replace(runDispose,'dispose(){disposeDragon(this);Rr(0),this.coop?.dispose()')
   ));
   files.set('assets/yugioh/dragon-model.js',dragonModule);
