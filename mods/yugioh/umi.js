@@ -5,10 +5,10 @@ const duration = 30;
 const runs = new WeakMap();
 export const fieldCards = [
   { id:'umi', name:'Umi', types:['water'], label:'Água', colors:'vec3(.03,.31,.62),vec3(.36,.88,1.)', pattern:'water' },
-  { id:'forest', name:'Forest · Floresta', types:['bug','grass','normal','fire'], label:'Inseto, Planta, Normal e Fogo', colors:'vec3(.04,.24,.08),vec3(.48,.81,.22)', pattern:'forest' },
+  { id:'forest', name:'Forest · Floresta', types:['bug','grass','normal','fire'], label:'Inseto, Planta, Normal e Fogo', colors:'vec3(.03,.13,.075),vec3(.24,.46,.19)', pattern:'forest' },
   { id:'mountain', name:'Mountain · Montanha', types:['dragon','fairy','electric','flying'], label:'Dragão, Fada, Elétrico e Voador', colors:'vec3(.26,.22,.18),vec3(.68,.56,.42)', pattern:'mountain' },
   { id:'sogen', name:'Sogen · Pradaria', types:['fighting'], label:'Lutador', colors:'vec3(.25,.49,.08),vec3(.80,.88,.35)', pattern:'sogen' },
-  { id:'yami', name:'Yami · Trevas', types:['dark','psychic','ghost'], label:'Sombrio, Psíquico e Fantasma', colors:'vec3(.09,.03,.19),vec3(.62,.18,.82)', pattern:'yami' },
+  { id:'yami', name:'Yami · Trevas', types:['dark','psychic','ghost'], label:'Sombrio, Psíquico e Fantasma', colors:'vec3(.012,.005,.027),vec3(.26,.055,.43)', pattern:'yami' },
   { id:'wasteland', name:'Wasteland · Terreno Devastado', types:['ground','steel','rock','ghost'], label:'Terra, Aço, Pedra e Fantasma', colors:'vec3(.32,.13,.08),vec3(.85,.55,.29)', pattern:'wasteland' },
   { id:'toon', name:'Toon World · Mundo Toon', types:[], label:'Monstros Toon', colors:'vec3(.38,.20,.69),vec3(.97,.45,.71)', pattern:'toon' },
   { id:'burning', name:'Burning Land · Terra Ardente', types:[], label:'Remove o campo ativo', colors:'vec3(.46,.06,.03),vec3(1.,.60,.08)', pattern:'burning' },
@@ -16,10 +16,10 @@ export const fieldCards = [
 ].map(card => ({ ...card, art:new URL('./'+card.id+'.jpg', import.meta.url).href }));
 
 const patterns = {
-  forest:'clamp(.35+.25*sin(ground.x*.39+sin(ground.y*.57))+.18*sin(ground.x*3.4-ground.y*2.8),0.,1.)',
+  forest:'smoothstep(.15,.85,fieldNoise(ground*.37)*.65+fieldNoise(ground*1.8)*.35)',
   mountain:'clamp(.3+.28*sin(ground.x*.53+ground.y*.36)+.15*sin(ground.x*2.9-ground.y*1.73)+.16*cos(ground.y*4.1+ground.x*.7),0.,1.)',
   sogen:'(.5+.5*sin(ground.x*.31+ground.y*.68-clock*.9))*.65',
-  yami:'smoothstep(.25,.9,(sin(ground.x*.34+clock*.6)+cos(ground.y*.48-clock*.9))*.25+.5)',
+  yami:'smoothstep(.51,.84,fieldNoise(ground*.26+vec2(clock*.06,-clock*.04)))',
   wasteland:'clamp(.25+.38*smoothstep(.6,.94,abs(sin(ground.x*.86+sin(ground.y*.97)*1.6)))+.16*cos(ground.y*3.3+ground.x*.7),0.,1.)',
   toon:'smoothstep(-.72,.88,sin(ground.x*.20+ground.y*.29+sin(ground.y*.44)*1.2-clock*.4))',
   burning:'smoothstep(.18,.92,sin(ground.x*.95+sin(ground.y*.56+clock*4.)+clock*2.)*.5+.5)',
@@ -34,24 +34,44 @@ export function umiStock(id = 'umi') {
 
 
 function flood(run, card) {
-  const radius = Number.isFinite(run.terrain.walkLim) ? run.terrain.walkLim : 100;
-  const geometry = new PlaneGeometry(radius * 2, radius * 2, 128, 128);
-  geometry.rotateX(-Math.PI / 2);
-  const positions = geometry.attributes.position;
-  for (let i = 0; i < positions.count; i++) {
-    positions.setY(i, run.terrain.height(positions.getX(i), positions.getZ(i)) + 0.08);
-  }
-  geometry.computeBoundingSphere();
+  const terrain = run.terrain;
+  const radius = Number.isFinite(terrain.world) ? terrain.world / 2 : 100;
+  const origin = run.player.pos.clone();
   const material = new ShaderMaterial({
-    transparent: true, depthWrite: false,
-    uniforms: { clock: { value: 0 }, spread: { value: 0 }, origin: { value: run.player.pos.clone() }, fade: { value: 1 } },
-    vertexShader: 'varying vec2 ground; void main(){ground=position.xz;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
-    fragmentShader: card.pattern === 'water' ? 'varying vec2 ground; uniform float clock,spread,fade; uniform vec3 origin; void main(){float dist=distance(ground,origin.xz);if(dist>spread)discard;float wave=sin(ground.x*1.5+ground.y*.8-clock*3.)*.5+.5;float crest=sin(ground.x*.68+ground.y*.36-clock*1.8+sin(ground.y*.19+clock*.55)*.48);float foam=.24*smoothstep(.88,.995,crest)+1.-smoothstep(0.,2.,spread-dist);gl_FragColor=vec4(mix(vec3(.03,.31,.62),vec3(.36,.88,1.),clamp(foam*.75+wave*.15,0.,1.)),fade*(.40+foam*.13));}' : `varying vec2 ground; uniform float clock,spread,fade; uniform vec3 origin; void main(){float dist=distance(ground,origin.xz);if(dist>spread)discard;float shade=${patterns[card.pattern]};float edge=1.-smoothstep(0.,2.,spread-dist);gl_FragColor=vec4(mix(${card.colors},clamp(shade+edge*.35,0.,1.)),fade*(.48+edge*.12));}`,
+    transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+    uniforms: { clock: { value: 0 }, spread: { value: 0 }, origin: { value: origin }, fade: { value: 1 } },
+    vertexShader: 'varying vec2 ground; void main(){ground=(modelMatrix*vec4(position,1.)).xz;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+    fragmentShader: card.pattern === 'water' ? 'varying vec2 ground; uniform float clock,spread,fade; uniform vec3 origin; void main(){float dist=distance(ground,origin.xz);if(dist>spread)discard;float wave=sin(ground.x*1.5+ground.y*.8-clock*3.)*.5+.5;float crest=sin(ground.x*.68+ground.y*.36-clock*1.8+sin(ground.y*.19+clock*.55)*.48);float foam=.24*smoothstep(.88,.995,crest)+1.-smoothstep(0.,2.,spread-dist);gl_FragColor=vec4(mix(vec3(.03,.31,.62),vec3(.36,.88,1.),clamp(foam*.75+wave*.15,0.,1.)),fade*(.40+foam*.13));}' : `varying vec2 ground; uniform float clock,spread,fade; uniform vec3 origin;
+    float fieldHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+    float fieldNoise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(fieldHash(i),fieldHash(i+vec2(1,0)),f.x),mix(fieldHash(i+vec2(0,1)),fieldHash(i+vec2(1,1)),f.x),f.y);}
+    void main(){float dist=distance(ground,origin.xz);if(dist>spread)discard;float shade=${patterns[card.pattern]};float edge=1.-smoothstep(0.,2.,spread-dist);gl_FragColor=vec4(mix(${card.colors},clamp(shade+edge*.35,0.,1.)),fade*(${card.id === 'yami' ? '.85' : card.id === 'forest' ? '.57' : '.54'}+edge*.10));}`,
   });
-  const mesh = new Mesh(geometry, material);
-  if (card.id !== 'umi') decorateField(run, mesh, card.id);
-  run.r.scene.add(mesh);
-  return mesh;
+  const field = new Group();
+  field.material = material;
+  field.userData.maxSpread = Math.SQRT2 * radius + Math.hypot(origin.x, origin.z) + 2;
+  terrain.group?.updateWorldMatrix(true, true);
+  terrain.group?.traverse(source => {
+    if (!source.isMesh || !terrain.terrainMat || source.material !== terrain.terrainMat) return;
+    const overlay = new Mesh(source.geometry, material);
+    overlay.matrixAutoUpdate = false;
+    overlay.matrix.copy(source.matrixWorld);
+    overlay.renderOrder = source.renderOrder + 1;
+    field.add(overlay);
+  });
+  if (!field.children.length) {
+    const geometry = new PlaneGeometry(radius * 2, radius * 2, 192, 192);
+    geometry.rotateX(-Math.PI / 2);
+    const positions = geometry.attributes.position;
+    for (let i = 0; i < positions.count; i++) {
+      positions.setY(i, terrain.height(positions.getX(i), positions.getZ(i)) + .18);
+    }
+    geometry.computeBoundingSphere();
+    field.userData.fallbackGeometry = geometry;
+    field.add(new Mesh(geometry, material));
+  }
+  if (card.id !== 'umi') decorateField(run, field, card.id);
+  run.r.scene.add(field);
+  return field;
 }
 
 // Each decoration lists shape, color, scale, height, and optional tilt.
@@ -66,9 +86,9 @@ const fieldDecor = {
   ],
   forest: [
     ['box', 0x5c3924, [.23,1.5,.23], .72],
-    ['cone', 0x246444, [1.15,1.6,1.15], 1.35],
-    ['cone', 0x438f48, [.86,1.5,.86], 1.96],
-    ['cone', 0x75b952, [.58,1.2,.58], 2.48],
+    ['sphere', 0x184c34, [1.04,.72,.86], 1.72],
+    ['sphere', 0x37784b, [.78,.61,.74], 2.1],
+    ['sphere', 0xd6e88d, [.09,.09,.09], .63],
   ],
   sogen: [
     ['cone', 0x769d3a, [.24,.75,.20], .34, .28],
@@ -76,9 +96,9 @@ const fieldDecor = {
     ['sphere', 0xffdf78, [.16,.11,.16], .61],
   ],
   yami: [
-    ['cone', 0x371951, [.55,1.78,.55], .84, .19],
-    ['cone', 0x9863f7, [.29,1.14,.29], .59, -.42],
-    ['sphere', 0xd7a3ff, [.13,.13,.13], 1.99],
+    ['cone', 0x20132f, [.55,1.78,.55], .84, .19],
+    ['cone', 0x6540a4, [.29,1.14,.29], .59, -.42],
+    ['sphere', 0xa96bff, [.13,.13,.13], 1.99],
   ],
   wasteland: [
     ['box', 0x9d6240, [.86,.53,.68], .23, .19],
@@ -134,7 +154,7 @@ function decorateField(run, surface, kind) {
 function clearWater(state) {
   if (!state.water) return;
   state.water.removeFromParent();
-  state.water.geometry.dispose();
+  state.water.userData.fallbackGeometry?.dispose();
   for (const resource of state.water.userData.fieldResources ?? []) resource.dispose();
   state.water.material.dispose();
   state.water = null;
@@ -202,7 +222,7 @@ export function updateUmi(run) {
   if (active && state.water) {
     const u = state.water.material.uniforms;
     u.clock.value = run.time;
-    u.spread.value = (state.seconds - left) * (Number.isFinite(run.terrain.walkLim) ? run.terrain.walkLim : 100) * 2;
+    u.spread.value = Math.min(1, (state.seconds - left) / 1.4) * state.water.userData.maxSpread;
     u.fade.value = Math.min(1, left * 2);
     for (const { prop, radius } of state.water.userData.fieldProps ?? []) {
       const scale = Math.min(1, Math.max(0, (u.spread.value - radius) * .45), u.fade.value);
