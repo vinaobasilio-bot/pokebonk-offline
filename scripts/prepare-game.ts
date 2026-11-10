@@ -70,6 +70,20 @@ const models=[
   {id:4,slots:dragonStages,name:dragonName,file:'blue-eyes-ultimate-dragon.glb',portrait:null,hash:'42ab9135ffd90a8c19bf0f4799169e1478b07fa81e798a5f1e11165d66986090'},
   {id:7,slots:[7,8,9],name:'Dragão Branco de Olhos Azuis',file:'blue-eyes-white-dragon.glb',portrait:'dragao-branco',hash:'2fe9fb209591e6ba815f365dde3cc1078436657b5eaf13454fbd70e96e2819d6'},
   {id:10,slots:[10,11,12],name:'Dragão Bebê',file:'Dragao Bebe.glb',portrait:'dragao-bebe',hash:'a5bc7ba1659f487f1ce50cfa55cfe16b54eb2554f405083d526ab1f39ee3f9a3'},
+  {id:13,slots:[13,14,15],name:"Maldição do Dragão",file:"curse-of-dragon.glb",portrait:'monster-13',hash:'1d176de984700ced175d1260fcdea7eae6779bd72703e44190fd619a17420ae1'},
+  {id:16,slots:[16,17,18],name:"Dama-Harpia",file:"harpie-lady.glb",portrait:'monster-16',hash:'3e2f980a595cea86d77689f763e3397315b1609b424c572549fd63510830edd4'},
+  {id:19,slots:[19,20],name:"Dragão de Metal",file:"metal-dragon.glb",portrait:'monster-19',hash:'6865ab32dbb42fead471ef8da20dcfb2e3d35c6147655d0a56bcb3a445012d66'},
+  {id:21,slots:[21,22],name:"Gaia, o Cavaleiro Feroz",file:"Gaia.glb",portrait:'monster-21',hash:'b8dbd9e75f8fc213f4f8d51bc2a85e2b4c95585a2bc132aac3b52d23e89e28c3'},
+  {id:23,slots:[23,24],name:"Maga Negra",file:"Maga Negra.glb",portrait:'monster-23',hash:'f7f3b4f29dfb06405510f031c19391ed297d29df02c70919e3a8f1890e09dd09'},
+  {id:27,slots:[27,28],name:"Mago do Tempo",file:"time-wizard.glb",portrait:'monster-27',hash:'98ba4786e5763d4d2af253aa450cbdd001ecc483155508bcfc63e5130bf3cf09'},
+  {id:29,slots:[29,30,31],name:"Rei Caveira",file:"summoned-skull.glb",portrait:'monster-29',hash:'f0dede6c318efffa06d10e38df20f49f4d2f8584158751d513793bc460a029b1'},
+  {id:32,slots:[32,33,34],name:"Rei Caveira Toon",file:"toon-summoned-skull.glb",portrait:'monster-32',hash:'dd0eb77036adc7e66a95870686b26ed48f631a679ff9fe66e768b53f64d7f9a0'},
+  {id:37,slots:[37,38],name:"Mago Negro",file:"Mago Negro.glb",portrait:'monster-37',hash:'0d48c3bfe34473b75e59450d10397476233b887db7a55d603b27fd47373a3203'},
+  {id:41,slots:[41,42,169],name:"Dragão Negro de Olhos Vermelhos",file:"red-eyes-b-dragon.glb",portrait:'monster-41',hash:'c12c69dbbcfe428f702c4721b546ce31fd49d53d9ab663d2fc3120243f8a7494'},
+  {id:43,slots:[43,44,45,182],name:"Soldado do Lustre Negro",file:"Soldado do Lustre Negro.glb",portrait:'monster-43',hash:'755a795770d7c7ea2a0039fd4be4a430170c081d81892787b6bbfef77db57411'},
+  {id:46,slots:[46,47],name:"Mago Negro do Caos",file:"Mago Negro do Chaos.glb",portrait:'monster-46',hash:'ad7c218d3411d8c84dd04a6363329d7de5eb51b84445e3cf1bae634931a13db3'},
+  {id:48,slots:[48,49],name:"Exodia, o Proibido",file:"summoned-lord-exodia.glb",portrait:'monster-48',hash:'48a4a57f6d26449e3915b1955f0f05dd67e6f9d2166e82ad04a61979834e6a47'},
+  {id:50,slots:[50,51],name:"O Dragão Alado de Rá",file:"winged-dragon-of-ra.glb",portrait:'monster-50',hash:'3b125396ef1f71ac927545bdd2e7bb8e36f79418b0a2c83c405714ac911e96cd'},
 ];
 const displayNames=new Map(dragonStages.map(id=>[id,dragonName]));
 const availableModels=await Promise.all(models.map(async model=>{

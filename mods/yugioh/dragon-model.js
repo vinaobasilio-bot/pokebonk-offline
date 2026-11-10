@@ -80,7 +80,7 @@ async function loadDragon(run, state, modelId) {
   const group = new Group();
   group.add(model);
   group.visible = false;
-  const clip = gltf.animations.find(animation => animation.name === 'Pairar' || animation.name === 'Flutuar');
+  const clip = gltf.animations.find(animation => animation.name === 'Pairar' || animation.name === 'Flutuar' || animation.name === 'Parado');
   const tracks = [];
   for (const track of clip?.tracks ?? []) {
     const split = track.name.lastIndexOf('.');
