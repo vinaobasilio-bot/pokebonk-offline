@@ -52,18 +52,24 @@ const dragonName='Dragão Supremo de Olhos Azuis';
 const dragonAtlas=await readFile('mods/yugioh/dragon-atlas.png');
 const dragonIcon=await readFile('mods/yugioh/dragon-icon.png');
 const dragonPortrait=await readFile('mods/yugioh/dragon-portrait.png');
-for(const folder of ['pmd','pmd-shiny','icons','portraits','portraits-shiny']){
-  const key=`assets/${folder}/6.png`;
-  if(files.has(key))files.set(key,folder.startsWith('pmd')?dragonAtlas:folder==='icons'?dragonIcon:dragonPortrait);
-}
 const catalog=JSON.parse(contents('data/pokemon.json'));
-const charizard=catalog.find((entry:{id:number})=>entry.id===6);
-if(!charizard||charizard.key!=='charizard')throw new Error('Slot do Charizard não encontrado no snapshot');
-charizard.name=dragonName;
+const sprites=JSON.parse(contents('data/sprites.json'));
+const dragonStages=[4,5,6];
+for(const id of dragonStages){
+  const entry=catalog.find((pokemon:{id:number})=>pokemon.id===id);
+  if(!entry||!sprites[id]||!sprites[6])throw new Error(`Estágio do dragão ausente: ${id}`);
+  entry.name=dragonName;
+  sprites[id]=sprites[6];
+  for(const [folder,asset] of [['pmd',dragonAtlas],['pmd-shiny',dragonAtlas],['icons',dragonIcon],['portraits',dragonPortrait],['portraits-shiny',dragonPortrait]] as const){
+    const key=`assets/${folder}/${id}.png`;
+    if(files.has(key))files.set(key,asset);
+  }
+}
 files.set('data/pokemon.json',Buffer.from(JSON.stringify(catalog)));
+files.set('data/sprites.json',Buffer.from(JSON.stringify(sprites)));
 for(const [key,data] of files){
   if(!/^data\/i18n\/[^/]+\.json$/.test(key))continue;
-  const localized=data.toString().replace(/"6"\s*:\s*"Charizard"/g,`"6":${JSON.stringify(dragonName)}`);
+  const localized=data.toString().replace(/"([456])"\s*:\s*"(?:Charmander|Charmeleon|Charizard)"/g,(_,id:string)=>`"${id}":${JSON.stringify(dragonName)}`);
   files.set(key,Buffer.from(localized));
 }
 files.set('version.json', Buffer.from(JSON.stringify({build:buildId,version})));
