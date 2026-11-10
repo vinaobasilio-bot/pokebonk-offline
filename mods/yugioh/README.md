@@ -12,4 +12,4 @@ pnpm preview
 
 Abra http://127.0.0.1:8098. Este teste é local e usa o snapshot offline do projeto.
 
-As Poké Balls pagas, gratuitas e amaldiçoadas do campo usam o Pote da Ganância. Geometria original de Chadib, convertida e simplificada para o jogo.
+As Poké Balls pagas, gratuitas e amaldiçoadas do campo usam o Pote da Ganância. Modelo texturizado de Yu-Gi-Oh! Master Duel, fornecido para este teste e ajustado à escala do campo.
