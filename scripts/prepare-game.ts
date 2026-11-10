@@ -158,12 +158,34 @@ potGltf.extensionsUsed=[...new Set([...(potGltf.extensionsUsed??[]),unlit])];
 for(const material of potGltf.materials){
   material.extensions={...material.extensions,[unlit]:{}};
 }
+// The uploaded DAE uses bottom-left UVs; glTF images use top-left UVs.
+const potBin=Buffer.from(sourcePot.subarray(20+potJsonLength));
+const potUvs=new Set<number>();
+for(const mesh of potGltf.meshes){
+  for(const primitive of mesh.primitives)potUvs.add(primitive.attributes.TEXCOORD_0);
+}
+for(const index of potUvs){
+  const accessor=potGltf.accessors[index];
+  const view=potGltf.bufferViews[accessor.bufferView];
+  if(accessor.type!=='VEC2'||accessor.componentType!==5126)throw new Error('UV do pote em formato inesperado');
+  const start=8+(view.byteOffset??0)+(accessor.byteOffset??0)+4;
+  const stride=view.byteStride??8;
+  for(let i=0;i<accessor.count;i++){
+    const offset=start+i*stride;
+    potBin.writeFloatLE(1-potBin.readFloatLE(offset),offset);
+  }
+  if(accessor.min&&accessor.max){
+    const min=accessor.min[1];
+    accessor.min[1]=1-accessor.max[1];
+    accessor.max[1]=1-min;
+  }
+}
 const potJson=Buffer.from(JSON.stringify(potGltf));
 const potPadding=Buffer.alloc((4-potJson.length%4)%4,0x20);
 const potHeader=Buffer.from(sourcePot.subarray(0,20));
 potHeader.writeUInt32LE(sourcePot.length-potJsonLength+potJson.length+potPadding.length,8);
 potHeader.writeUInt32LE(potJson.length+potPadding.length,12);
-const pot=Buffer.concat([potHeader,potJson,potPadding,sourcePot.subarray(20+potJsonLength)]);
+const pot=Buffer.concat([potHeader,potJson,potPadding,potBin]);
 for(const kind of ['chest','freechest','cursedchest']){
   const key=`assets/models/${kind}.glb`;
   if(!files.has(key))throw new Error(`Modelo do item de campo ausente: ${key}`);
