@@ -27,7 +27,14 @@ export function mountYugibonkMenu(app, {monsters, maps}) {
   let mode = 'standard';
   let launching = false;
 
-  const layer = elements('main',{id:'yb-launcher'});
+  const home = elements('iframe',{id:'yb-home',title:'Menu original do Yugibonk',src:'./yugibonk-home/index.html'});
+  const layer = elements('main',{id:'yb-launcher',hidden:true});
+  window.addEventListener('message',event=>{
+    if(event.source!==home.contentWindow||event.origin!==location.origin||event.data?.type!=='yugibonk-offline-select'||home.hidden||app.run)return;
+    setMode(event.data.mode==='endless'?1:0);
+    home.hidden=true;
+    layer.hidden=false;
+  });
   const back = elements('button',{className:'yb-return',type:'button',textContent:'Voltar ao Yugibonk',hidden:true});
   const play = elements('button',{className:'yb-play',type:'button',textContent:'Iniciar partida'});
   const preview = elements('div',{className:'yb-preview-card'});
@@ -95,7 +102,8 @@ export function mountYugibonkMenu(app, {monsters, maps}) {
   filter();
 
   function show() {
-    layer.hidden=false;
+    layer.hidden=true;
+    home.hidden=false;
     back.hidden=true;
     play.disabled=false;
     play.textContent='Iniciar partida';
@@ -103,7 +111,9 @@ export function mountYugibonkMenu(app, {monsters, maps}) {
     updateDifficulty();
   }
   const classic=elements('button',{className:'yb-pill',type:'button',textContent:'Menu clássico'});
-  classic.onclick=()=>{layer.hidden=true;back.hidden=false;};
+  classic.onclick=()=>{home.hidden=true;layer.hidden=true;back.hidden=false;};
+  const homeButton=elements('button',{className:'yb-pill',type:'button',textContent:'Voltar ao menu'});
+  homeButton.onclick=show;
   back.onclick=show;
   play.onclick=async()=>{
     if (launching||app.run) return;
@@ -116,7 +126,10 @@ export function mountYugibonkMenu(app, {monsters, maps}) {
       const started=await app.startRun({species:selected.id,biome:scenario.value,tier:Number(difficulty.value),mode,boosts:[]});
       if (!started&&!app.run) back.hidden=false;
     } catch {
-      show();
+      home.hidden=true;
+      layer.hidden=false;
+      play.disabled=false;
+      play.textContent='Iniciar partida';
       notice.textContent='Não foi possível iniciar. Tente novamente.';
     } finally {launching=false;}
   };
@@ -130,13 +143,13 @@ export function mountYugibonkMenu(app, {monsters, maps}) {
   const nativeOpenRun=app.openRun;
   app.openRun=async function(...args) {
     const result=await nativeOpenRun.apply(this,args);
-    if(result||this.run){layer.hidden=true;back.hidden=true;}
+    if(result||this.run){home.hidden=true;layer.hidden=true;back.hidden=true;}
     else if(layer.hidden){back.hidden=false;}
     return result;
   };
 
   layer.append(
-    elements('header',{className:'yb-top'},elements('span',{className:'yb-badge',textContent:'Liga de Duelistas · Edição de teste'}),classic),
+    elements('header',{className:'yb-top'},elements('span',{className:'yb-badge',textContent:'Liga de Duelistas · Edição de teste'}),elements('div',{className:'yb-top-actions'},homeButton,classic)),
     elements('div',{className:'yb-layout'},
       elements('section',{className:'yb-setup'},
         elements('h1',{className:'yb-logo'},'Yugi',elements('span',{textContent:'bonk'})),
@@ -149,5 +162,5 @@ export function mountYugibonkMenu(app, {monsters, maps}) {
         elements('div',{className:'yb-gallery-head'},elements('div',{},elements('h2',{textContent:'Escolha seu monstro'}),total),elements('div',{className:'yb-filters'},search,types)),
         list)),
   );
-  document.body.append(layer,back);
+  document.body.append(home,layer,back);
 }

@@ -1,3 +1,4 @@
+import {prepareYugibonkHome} from './prepare-yugibonk-home.ts';
 import {expandRoster} from './expand-roster.ts';
 import {patchOfflineStorageError} from './offline-storage-error.ts';
 import {mkdir,readFile,writeFile,rm} from 'node:fs/promises';
@@ -42,7 +43,7 @@ if(patched.menus)files.set(modules.menus.name,Buffer.from(patchOptionalLookFrame
 files.set(configKey, Buffer.from(patched.config));
 const entryKey=one([...files.keys()].filter(key=>key.endsWith('.js')&&html.includes(`src="./${key}"`)),'snapshot entry module');
 files.set(entryKey,Buffer.from(patchNativeOriginGate(contents(entryKey))));
-const csp = "default-src 'self' blob: data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' blob:; frame-src 'none'; object-src 'none'";
+const csp = "default-src 'self' blob: data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' blob:; frame-src 'self'; object-src 'none'";
 // Native packages serve all assets directly; there is no PWA or service worker.
 const nativeHtml=html.replace(/<link[^>]+rel=["']manifest["'][^>]*>/g,'').replace('</head>', `<meta http-equiv="Content-Security-Policy" content="${csp}"><script>if(!localStorage.getItem('pokebonk.lang'))localStorage.setItem('pokebonk.lang','zht');</script></head>`);
 files.delete('manifest.webmanifest');
@@ -282,6 +283,7 @@ const launcherMaps=info.biomes.filter(biome=>Number.isFinite(biome.size)).map(bi
 files.set('assets/yugioh/launcher.js',await readFile('mods/yugioh/menu/launcher.js'));
 files.set('assets/yugioh/launcher.css',await readFile('mods/yugioh/menu/launcher.css'));
 files.set('assets/yugioh/launcher-data.js',Buffer.from('export default '+JSON.stringify({monsters:launcherMonsters,maps:launcherMaps})+';'));
+await prepareYugibonkHome(files);
 const launcherEntry='await (window.__pokebonkLocalApp=new aC()).boot();';
 const launcherMain=contents(mainKey);
 if(launcherMain.split(launcherEntry).length!==2)throw new Error('Ponto de entrada do menu Yugibonk mudou');

@@ -48,3 +48,6 @@ button.yb-card:hover{border-color:#ffe297;filter:brightness(1.15)}
 .yb-card-featured .yb-card-name{font-size:17px}
 .yb-card-featured .yb-card-art{aspect-ratio:1.3}
 @media(max-width:720px){.yb-layout{grid-template-columns:1fr}.yb-setup{position:static}.yb-card-featured{max-width:180px}.yb-card-grid{grid-template-columns:repeat(auto-fill,minmax(99px,1fr))}.yb-gallery-head{align-items:start}}
+#yb-home{position:fixed;inset:0;z-index:150;border:0;width:100%;height:100%;background:#120c2c;display:block}
+#yb-home[hidden]{display:none!important}
+.yb-top-actions{display:flex;gap:8px;flex-wrap:wrap}
