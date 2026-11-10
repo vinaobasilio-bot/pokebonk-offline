@@ -2,7 +2,7 @@ import { I as Group, g as Box3, bt as Vector3, p as GLTFLoader, q as MeshBasicMa
 import roster from './roster.js';
 
 const dragons = new WeakMap();
-const sizes = { 1: 2.8, 7: 5.2, 10: 2.8, 16: 3.8, 21: 4.3, 23: 3.7, 27: 3.3, 37: 3.3 };
+const sizes = { 1: 2.8, 7: 5.2, 10: 2.8, 16: 3.8, 21: 4.3, 23: 3.7, 27: 3.3, 32: 3.6, 37: 3.3 };
 const flyingDragons = new Set([4, 7, 10, 13, 19, 41, 50]);
 const fasterWings = new Set([7, 10]);
 
@@ -39,6 +39,8 @@ export function drawDragon(player, x, z) {
   }
   group.visible = true;
   group.position.copy(player.pos);
+  // The Rei Caveira clip already lifts the model above its rest pose.
+  if (modelId === 29) group.position.y -= 0.75;
   group.rotation.y = Math.atan2(x, z);
   group.rotation.z = player.dead ? -1.2 : 0;
   group.scale.setScalar(player.renderScale || 1);
