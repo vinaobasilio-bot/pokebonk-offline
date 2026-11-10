@@ -53,7 +53,7 @@ const dragonName='Dragão Supremo de Olhos Azuis';
 const dragonAtlas=await readFile('mods/yugioh/dragon-atlas.png');
 const dragonIcon=await readFile('mods/yugioh/dragon-icon.png');
 const dragonPortrait=await readFile('mods/yugioh/dragon-portrait.png');
-const catalog=JSON.parse(contents('data/pokemon.json')) as {id:number;family:number;name:string}[];
+const catalog=JSON.parse(contents('data/pokemon.json')) as {id:number;family:number;name:string;types:string[]}[];
 const sprites=JSON.parse(contents('data/sprites.json'));
 const dragonStages=[4,5,6];
 for(const id of dragonStages){
@@ -247,6 +247,47 @@ files.set('assets/umi.js',await readFile('mods/yugioh/umi.js'));
 for(const id of ["umi","forest","mountain","sogen","yami","wasteland","toon","burning","labyrinth"]){
   files.set(`assets/${id}.jpg`,await readFile(`mods/yugioh/${id}.jpg`));
 }
+// The launcher uses the original Yugibonk portraits for the first 18 slots and the Yuginimo collection for the rest.
+const featuredArt:Record<number,string>={
+  1:'kuriboh',4:'dragao-supremo-olhos-azuis-arte',7:'dragao-branco',10:'dragao-bebe',
+  13:'maldição-do-dragao',16:'dama-harpia',19:'dragao-de-metal',21:'gaia',23:'maga-negra',27:'mago-do-tempo',
+  29:'caveira-invocada',32:'caveira-invocada-toon',37:'mago-negro',41:'dragao-negro-olhos-vermelhos',
+  43:'soldado-do-lustre-negro',46:'mago-negro-do-caos',48:'exodia-lorde-invocado',50:'dragao-alado-de-ra-arte',
+};
+const portraitsDir=path.resolve('cache/yugioh-menu');
+await mkdir(portraitsDir,{recursive:true});
+await Promise.all(Object.entries(featuredArt).map(async ([id,slug])=>{
+  const name=path.join(portraitsDir,slug+'.webp');
+  try{
+    let bytes=await readFile(name).catch(()=>null);
+    if(!bytes){
+      const response=await fetch('https://yugibonk.com.br/assets/cartas/'+encodeURIComponent(slug)+'.webp',{signal:AbortSignal.timeout(15000)});
+      if(!response.ok)return;
+      bytes=Buffer.from(await response.arrayBuffer());
+      if(bytes.toString('ascii',8,12)!=='WEBP')return;
+      await writeFile(name,bytes);
+    }
+    files.set('assets/yugioh/menu-'+id+'.webp',bytes);
+  }catch(error){console.warn('Retrato opcional da Liga indisponível:',slug,error);}
+}));
+const launcherMonsters=info.roster.map(({id})=>{
+  const monster=catalog.find(entry=>entry.id===id);
+  if(!monster)throw new Error('Monstro da Liga ausente: '+id);
+  const featured='assets/yugioh/menu-'+id+'.webp';
+  const art=files.has(featured)?featured:portraits['portraits/'+id+'.png']?'assets/'+portraits['portraits/'+id+'.png']:'assets/portraits/'+id+'.png';
+  if(!files.has(art))throw new Error('Arte do monstro da Liga ausente: '+id);
+  return {id,name:monster.name,types:monster.types,art};
+});
+const launcherMaps=info.biomes.filter(biome=>Number.isFinite(biome.size)).map(biome=>biome.id);
+files.set('assets/yugioh/launcher.js',await readFile('mods/yugioh/menu/launcher.js'));
+files.set('assets/yugioh/launcher.css',await readFile('mods/yugioh/menu/launcher.css'));
+files.set('assets/yugioh/launcher-data.js',Buffer.from('export default '+JSON.stringify({monsters:launcherMonsters,maps:launcherMaps})+';'));
+const launcherEntry='await (window.__pokebonkLocalApp=new aC()).boot();';
+const launcherMain=contents(mainKey);
+if(launcherMain.split(launcherEntry).length!==2)throw new Error('Ponto de entrada do menu Yugibonk mudou');
+files.set(mainKey,Buffer.from("import {mountYugibonkMenu} from './yugioh/launcher.js';\nimport launcherData from './yugioh/launcher-data.js';\n"+
+  launcherMain.replace(launcherEntry,launcherEntry+'mountYugibonkMenu(window.__pokebonkLocalApp,launcherData);')));
+files.set('index.html',Buffer.from(contents('index.html').replace('</head>','<link rel="stylesheet" href="./assets/yugioh/launcher.css"></head>')));
 files.set('version.json', Buffer.from(JSON.stringify({build:buildId,version})));
 files.set('resource-audit.json',Buffer.from(JSON.stringify({contractDigest:resourceContractDigest(resourceContract)})));
 files.set('offline-build.json', Buffer.from(JSON.stringify({upstreamBuild:buildId,upstreamVersion:version,offlineVersion:await offlineVersion(),sourceDigest:await sourceDigest(snapshotRoot),variant:'unlock-all',league:info.roster.length,lab:info.lab.length,items:info.items.length,achievements:info.quests.length,medals:info.biomes.filter(b=>Number.isFinite(b.size)).length*3,medalRank:info.medalRanks.length,statusIcons,reactionIcons,itemIcons,builder:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()},null,2)));
