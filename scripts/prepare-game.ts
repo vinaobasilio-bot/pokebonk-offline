@@ -149,7 +149,21 @@ if(Object.keys(activeModels).length){
   files.set('assets/yugioh/roster.js',Buffer.from('export default '+JSON.stringify(activeModels)+';'));
 }
 // Use the same field pot for paid, free and cursed pickups.
-const pot=await readFile('mods/yugioh/pot-of-greed.glb');
+const sourcePot=await readFile('mods/yugioh/pot-of-greed.glb');
+const potJsonLength=sourcePot.readUInt32LE(12);
+const potGltf=JSON.parse(sourcePot.toString('utf8',20,20+potJsonLength));
+// Use the original albedo without the field lights darkening it.
+const unlit='KHR_materials_unlit';
+potGltf.extensionsUsed=[...new Set([...(potGltf.extensionsUsed??[]),unlit])];
+for(const material of potGltf.materials){
+  material.extensions={...material.extensions,[unlit]:{}};
+}
+const potJson=Buffer.from(JSON.stringify(potGltf));
+const potPadding=Buffer.alloc((4-potJson.length%4)%4,0x20);
+const potHeader=Buffer.from(sourcePot.subarray(0,20));
+potHeader.writeUInt32LE(sourcePot.length-potJsonLength+potJson.length+potPadding.length,8);
+potHeader.writeUInt32LE(potJson.length+potPadding.length,12);
+const pot=Buffer.concat([potHeader,potJson,potPadding,sourcePot.subarray(20+potJsonLength)]);
 for(const kind of ['chest','freechest','cursedchest']){
   const key=`assets/models/${kind}.glb`;
   if(!files.has(key))throw new Error(`Modelo do item de campo ausente: ${key}`);

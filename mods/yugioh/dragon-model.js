@@ -32,7 +32,7 @@ export function drawDragon(player, x, z) {
   const { group } = state;
   const airborne = !player.grounded && !player.diving && run.input.down('Space');
   const moving = player.speedNow > 0.6 || airborne;
-  const animation = moving ? state.flight : state.idle;
+  const animation = moving ? state.movement : state.idle;
   if (state.animation !== animation) {
     state.animation = animation;
     state.animationStart = run.time;
@@ -98,11 +98,11 @@ async function loadDragon(run, state, modelId) {
   group.visible = false;
   const findClip = names => names.map(name => gltf.animations.find(clip => clip.name === name)).find(Boolean);
   const idleClip = findClip(['Pairar', 'Flutuar', 'Parado']);
-  const flightClip = flyingDragons.has(modelId) ? findClip(['Voo rápido', 'Correr', 'Voar', 'Deslizar']) : null;
+  const movementClip = findClip(['Correr', 'Voo rápido', 'Voar', 'Deslizar', 'Andar']);
   const idle = bindClip(model, idleClip);
-  const flight = flightClip ? bindClip(model, flightClip) : idle;
+  const movement = movementClip ? bindClip(model, movementClip) : idle;
   run.r.scene.add(group);
-  Object.assign(state, { group, model, idle, flight });
+  Object.assign(state, { group, model, idle, movement });
 }
 
 function bindClip(model, clip) {
