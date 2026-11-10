@@ -1,6 +1,6 @@
 # PokéBonk Offline com Yu-Gi-Oh! — teste
 
-No PokéBonk, escolha Charizard (Dragão Supremo de Olhos Azuis). O mod troca a aparência do slot 6, incluindo ícone, retrato e sprite de jogo. As animações são simples. Mapas, atributos e ataques vêm do PokéBonk.
+Na Liga, escolha Dragão Supremo de Olhos Azuis no antigo slot do Charmander. O sprite do dragão é usado desde o início e nas duas evoluções. Mapas, atributos e ataques vêm do PokéBonk.
 
 Com Node.js 24.12+ e pnpm 10.33.2, na pasta do projeto:
 
