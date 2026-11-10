@@ -1,4 +1,4 @@
-import { tt as PlaneGeometry, K as Mesh, ut as ShaderMaterial, I as Group, T as ConeGeometry, ft as SphereGeometry, q as MeshBasicMaterial } from './three-C6GX2F5d.js';
+import { tt as PlaneGeometry, K as Mesh, ut as ShaderMaterial, I as Group, T as ConeGeometry, ft as SphereGeometry, q as MeshBasicMaterial, _ as BoxGeometry } from './three-C6GX2F5d.js';
 
 const duration = 30;
 
@@ -16,14 +16,14 @@ export const fieldCards = [
 ].map(card => ({ ...card, art:new URL('./'+card.id+'.jpg', import.meta.url).href }));
 
 const patterns = {
-  forest:'smoothstep(.1,.9,sin(ground.x*.8+sin(ground.y*1.2))*.5+.5)',
+  forest:'clamp(.35+.25*sin(ground.x*.39+sin(ground.y*.57))+.18*sin(ground.x*3.4-ground.y*2.8),0.,1.)',
   mountain:'clamp(.3+.28*sin(ground.x*.53+ground.y*.36)+.15*sin(ground.x*2.9-ground.y*1.73)+.16*cos(ground.y*4.1+ground.x*.7),0.,1.)',
   sogen:'(.5+.5*sin(ground.x*.31+ground.y*.68-clock*.9))*.65',
   yami:'smoothstep(.25,.9,(sin(ground.x*.34+clock*.6)+cos(ground.y*.48-clock*.9))*.25+.5)',
-  wasteland:'smoothstep(.84,.98,abs(sin(ground.x*.71+sin(ground.y*.63)*1.6)))',
+  wasteland:'clamp(.25+.38*smoothstep(.6,.94,abs(sin(ground.x*.86+sin(ground.y*.97)*1.6)))+.16*cos(ground.y*3.3+ground.x*.7),0.,1.)',
   toon:'smoothstep(-.72,.88,sin(ground.x*.20+ground.y*.29+sin(ground.y*.44)*1.2-clock*.4))',
   burning:'smoothstep(.18,.92,sin(ground.x*.95+sin(ground.y*.56+clock*4.)+clock*2.)*.5+.5)',
-  labyrinth:'(1.-step(.13,min(abs(mod(ground.x,5.)-2.5),abs(mod(ground.y,5.)-2.5))))*.85',
+  labyrinth:'(.15+.5*step(.92,max(fract(ground.x*.65),fract(ground.y*.65))))',
 };
 
 export function umiStock(id = 'umi') {
@@ -49,51 +49,85 @@ function flood(run, card) {
     fragmentShader: card.pattern === 'water' ? 'varying vec2 ground; uniform float clock,spread,fade; uniform vec3 origin; void main(){float dist=distance(ground,origin.xz);if(dist>spread)discard;float wave=sin(ground.x*1.5+ground.y*.8-clock*3.)*.5+.5;float crest=sin(ground.x*.68+ground.y*.36-clock*1.8+sin(ground.y*.19+clock*.55)*.48);float foam=.24*smoothstep(.88,.995,crest)+1.-smoothstep(0.,2.,spread-dist);gl_FragColor=vec4(mix(vec3(.03,.31,.62),vec3(.36,.88,1.),clamp(foam*.75+wave*.15,0.,1.)),fade*(.40+foam*.13));}' : `varying vec2 ground; uniform float clock,spread,fade; uniform vec3 origin; void main(){float dist=distance(ground,origin.xz);if(dist>spread)discard;float shade=${patterns[card.pattern]};float edge=1.-smoothstep(0.,2.,spread-dist);gl_FragColor=vec4(mix(${card.colors},clamp(shade+edge*.35,0.,1.)),fade*(.48+edge*.12));}`,
   });
   const mesh = new Mesh(geometry, material);
-  if (card.id === 'mountain' || card.id === 'toon') decorateField(run, mesh, card.id);
+  if (card.id !== 'umi') decorateField(run, mesh, card.id);
   run.r.scene.add(mesh);
   return mesh;
 }
 
+// Each decoration lists shape, color, scale, height, and optional tilt.
+const fieldDecor = {
+  mountain: [
+    ['cone', 0x705c49, [1.25,2.25,1], 1.02],
+    ['cone', 0xe1efff, [.43,.72,.36], 1.82],
+  ],
+  toon: [
+    ['sphere', 0xff63b3, [.75,.34,.75], .85],
+    ['cone', 0xffd38a, [.24,1,.24], .49, Math.PI],
+  ],
+  forest: [
+    ['box', 0x5c3924, [.23,1.5,.23], .72],
+    ['cone', 0x246444, [1.15,1.6,1.15], 1.35],
+    ['cone', 0x438f48, [.86,1.5,.86], 1.96],
+    ['cone', 0x75b952, [.58,1.2,.58], 2.48],
+  ],
+  sogen: [
+    ['cone', 0x769d3a, [.24,.75,.20], .34, .28],
+    ['cone', 0xa6c95a, [.22,.62,.18], .25, -.33],
+    ['sphere', 0xffdf78, [.16,.11,.16], .61],
+  ],
+  yami: [
+    ['cone', 0x371951, [.55,1.78,.55], .84, .19],
+    ['cone', 0x9863f7, [.29,1.14,.29], .59, -.42],
+    ['sphere', 0xd7a3ff, [.13,.13,.13], 1.99],
+  ],
+  wasteland: [
+    ['box', 0x9d6240, [.86,.53,.68], .23, .19],
+    ['cone', 0xc48f60, [.48,.9,.42], .54, -.27],
+  ],
+  burning: [
+    ['cone', 0xe54b13, [.41,1.08,.41], .51, -.15],
+    ['cone', 0xffc347, [.22,.7,.22], .38, .24],
+  ],
+  labyrinth: [
+    ['box', 0x655b68, [3.9,1.0,.33], .48],
+    ['box', 0xa79883, [4.05,.15,.44], 1.04],
+  ],
+};
+
 function decorateField(run, surface, kind) {
-  const mountain = kind === 'mountain';
-  const bodyGeometry = mountain ? new ConeGeometry(1, 1, 5) : new SphereGeometry(1, 10, 6);
-  const trimGeometry = new ConeGeometry(1, 1, 6);
-  const colors = mountain ? [0x6e5946, 0x8a725b, 0x524940, 0xe1efff] : [0xff63b3, 0x9665ff, 0x50dcdc, 0xffd38a];
-  const materials = colors.map(color => new MeshBasicMaterial({ color, toneMapped:false }));
+  const shapes = { cone:new ConeGeometry(1,1,5), sphere:new SphereGeometry(1,10,6), box:new BoxGeometry(1,1,1) };
+  const parts = fieldDecor[kind].map(([shape, color, dimensions, height, tilt = 0]) => ({
+    geometry:shapes[shape],
+    material:new MeshBasicMaterial({ color, toneMapped:false }),
+    dimensions, height, tilt,
+  }));
   const origin = surface.material.uniforms.origin.value;
   const limit = Number.isFinite(run.terrain.walkLim) ? run.terrain.walkLim : 100;
   surface.userData.fieldProps = [];
-  surface.userData.fieldResources = [bodyGeometry, trimGeometry, ...materials];
+  surface.userData.fieldResources = [...Object.values(shapes), ...parts.map(part => part.material)];
   for (let i = 0; i < 28; i++) {
     const angle = i * 2.399963;
-    const radius = 11 + (i % 7) * 4.3;
-    const x = origin.x + Math.cos(angle) * radius;
-    const z = origin.z + Math.sin(angle) * radius;
+    const radius = kind === 'burning' ? 5 + (i % 7) * 2 : 11 + (i % 7) * 4.3;
+    const dx = Math.cos(angle) * radius, dz = Math.sin(angle) * radius;
+    const x = origin.x + (kind === 'labyrinth' ? Math.round(dx / 5) * 5 : dx);
+    const z = origin.z + (kind === 'labyrinth' ? Math.round(dz / 5) * 5 : dz);
     if (Math.abs(x) > limit - 2 || Math.abs(z) > limit - 2) continue;
     const y = run.terrain.height(x, z);
     if (!Number.isFinite(y)) continue;
     const prop = new Group();
-    const size = 0.75 + (i % 5) * 0.25;
-    const body = new Mesh(bodyGeometry, materials[i % 3]);
-    const trim = new Mesh(trimGeometry, materials[3]);
-    if (mountain) {
-      body.scale.set(size * 1.25, size * 2.25, size);
-      body.position.y = size * 1.02;
-      trim.scale.set(size * .43, size * .72, size * .36);
-      trim.position.y = size * 1.82;
-    } else {
-      body.scale.set(size * .75, size * .34, size * .75);
-      body.position.y = size * .85;
-      trim.scale.set(size * .24, size, size * .24);
-      trim.rotation.z = Math.PI;
-      trim.position.y = size * .49;
+    const size = kind === 'labyrinth' ? 1 : .75 + (i % 5) * .25;
+    for (const part of parts) {
+      const object = new Mesh(part.geometry, part.material);
+      object.scale.set(...part.dimensions).multiplyScalar(size);
+      object.position.y = part.height * size;
+      object.rotation.z = part.tilt;
+      prop.add(object);
     }
     prop.position.set(x, y, z);
-    prop.rotation.y = angle;
-    prop.add(body, trim);
+    prop.rotation.y = kind === 'labyrinth' ? (i % 2) * Math.PI / 2 : angle;
     prop.visible = false;
     surface.add(prop);
-    surface.userData.fieldProps.push({ prop, radius });
+    surface.userData.fieldProps.push({ prop, radius:Math.hypot(x-origin.x,z-origin.z) });
   }
 }
 
