@@ -1,4 +1,4 @@
-import { I as Group, g as Box3, bt as Vector3, p as GLTFLoader } from '../three-C6GX2F5d.js';
+import { I as Group, g as Box3, bt as Vector3, p as GLTFLoader, q as MeshBasicMaterial } from '../three-C6GX2F5d.js';
 
 const dragons = new WeakMap();
 const slots = new Set([4, 5, 6]);
@@ -49,22 +49,29 @@ async function loadDragon(run, state) {
     return;
   }
 
-  // The GLB defaults to a fully metallic surface, but this scene has no environment map.
-  // A diffuse surface and a textured fill keep its colors readable in darker arenas.
-  const materials = new Set();
+  // The original atlas already contains highlights and shadows.
+  const materials = new Map();
   model.traverse(node => {
-    for (const material of Array.isArray(node.material) ? node.material : [node.material]) {
-      if (material?.isMeshStandardMaterial) materials.add(material);
-    }
+    if (!node.isMesh) return;
+    const convert = material => {
+      if (!material?.map) return material;
+      if (!materials.has(material)) {
+        materials.set(material, new MeshBasicMaterial({
+          map: material.map,
+          color: material.color,
+          side: material.side,
+          transparent: material.transparent,
+          opacity: material.opacity,
+          alphaTest: material.alphaTest,
+          depthWrite: material.depthWrite,
+          toneMapped: false,
+        }));
+      }
+      return materials.get(material);
+    };
+    node.material = Array.isArray(node.material) ? node.material.map(convert) : convert(node.material);
   });
-  for (const material of materials) {
-    material.metalness = 0;
-    material.roughness = 0.85;
-    material.emissive.set(0xffffff);
-    material.emissiveMap = material.map;
-    material.emissiveIntensity = 0.6;
-    material.needsUpdate = true;
-  }
+  for (const material of materials.keys()) material.dispose();
 
   model.scale.multiplyScalar(scale);
   model.position.sub(new Vector3(center.x, bounds.min.y, center.z).multiplyScalar(scale));
