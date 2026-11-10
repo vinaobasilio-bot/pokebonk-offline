@@ -72,6 +72,29 @@ for(const [key,data] of files){
   const localized=data.toString().replace(/"([456])"\s*:\s*"(?:Charmander|Charmeleon|Charizard)"/g,(_,id:string)=>`"${id}":${JSON.stringify(dragonName)}`);
   files.set(key,Buffer.from(localized));
 }
+// Download the same model used by Yugibonk, pinning the exact file for this build.
+try {
+  const response=await fetch('https://yugibonk.com.br/assets/modelos/blue-eyes-ultimate-dragon.glb',{signal:AbortSignal.timeout(20000)});
+  if(!response.ok)throw new Error(`HTTP ${response.status}`);
+  const model=Buffer.from(await response.arrayBuffer());
+  if(sha(model)!=='42ab9135ffd90a8c19bf0f4799169e1478b07fa81e798a5f1e11165d66986090')throw new Error('Modelo 3D diferente da versão esperada');
+  const playerDraw='t.push(this.pos.x,this.pos.y,this.pos.z,n,r,l,this.renderScale,';
+  const runDispose='dispose(){Rr(0),this.coop?.dispose()';
+  const game=contents(mainKey);
+  for(const hook of [playerDraw,runDispose]){
+    if(game.split(hook).length!==2)throw new Error('Ponto de integração 3D mudou no PokéBonk');
+  }
+  const dragonModule=await readFile('mods/yugioh/dragon-model.js');
+  files.set(mainKey,Buffer.from(
+    "import {drawDragon,disposeDragon} from './yugioh/dragon-model.js';\n"+
+    game.replace(playerDraw,'drawDragon(this,o,s)||'+playerDraw)
+        .replace(runDispose,'dispose(){disposeDragon(this);Rr(0),this.coop?.dispose()')
+  ));
+  files.set('assets/yugioh/dragon-model.js',dragonModule);
+  files.set('assets/yugioh/blue-eyes-ultimate-dragon.glb',model);
+}catch(error){
+  console.warn('Modelo 3D não incluído. O jogo usará o sprite do dragão.',error);
+}
 files.set('version.json', Buffer.from(JSON.stringify({build:buildId,version})));
 files.set('resource-audit.json',Buffer.from(JSON.stringify({contractDigest:resourceContractDigest(resourceContract)})));
 files.set('offline-build.json', Buffer.from(JSON.stringify({upstreamBuild:buildId,upstreamVersion:version,offlineVersion:await offlineVersion(),sourceDigest:await sourceDigest(snapshotRoot),variant:'unlock-all',league:info.roster.length,lab:info.lab.length,items:info.items.length,achievements:info.quests.length,medals:info.biomes.filter(b=>Number.isFinite(b.size)).length*3,medalRank:info.medalRanks.length,statusIcons,reactionIcons,itemIcons,builder:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()},null,2)));
