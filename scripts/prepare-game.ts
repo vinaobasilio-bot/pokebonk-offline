@@ -234,11 +234,13 @@ files.set(mainKey,Buffer.from("import {updateUmi,disposeUmi,umiDamage} from './u
   .replace(fieldRender,'updateUmi(this),'+fieldRender)
   .replace(disposeHook,disposeHook.replace('dispose(){','dispose(){disposeUmi(this);'))
   .replace(fieldHurt,fieldHurt+'e=umiDamage(l,e,s>=0&&l.enemies.$x0f2e7(s)?l.enemies.$fm71sz(s):null,this.types);')));
-files.set(potRenderModule,Buffer.from("import {umiStock,umiArt,umiDamage} from './umi.js';\n"+fieldMenus
+files.set(potRenderModule,Buffer.from("import {umiStock,fieldCards,umiDamage} from './umi.js';\n"+fieldMenus
   .replace(fieldStrike,'let l=i.$fm71sz(e),u=n.fixed?t:umiDamage(r,t,n.slot>=10?r.allies.typesFor(n.slot):o.types,l),d=1;')
-  .replace(fieldBag,'Z(`div`,{class:`rg-boost`},Z(`img`,{src:umiArt,alt:``,style:{width:`24px`}}),Z(`span`,{},Z(`b`,{},`Umi`),Z(`small`,{},`Magia de Campo · use durante a partida`)),Z(`i`,{},`×${umiStock()}`)),'+fieldBag)));
+  .replace(fieldBag,'...fieldCards.map(card=>Z(`div`,{class:`rg-boost`},Z(`img`,{src:card.art,alt:``,style:{width:`24px`}}),Z(`span`,{},Z(`b`,{},card.name),Z(`small`,{},card.label)),Z(`i`,{},`×${umiStock(card.id)}`))),'+fieldBag)));
 files.set('assets/umi.js',await readFile('mods/yugioh/umi.js'));
-files.set('assets/umi.jpg',await readFile('mods/yugioh/umi.jpg'));
+for(const id of ["umi","forest","mountain","sogen","yami","wasteland","toon","burning","labyrinth"]){
+  files.set(`assets/${id}.jpg`,await readFile(`mods/yugioh/${id}.jpg`));
+}
 files.set('version.json', Buffer.from(JSON.stringify({build:buildId,version})));
 files.set('resource-audit.json',Buffer.from(JSON.stringify({contractDigest:resourceContractDigest(resourceContract)})));
 files.set('offline-build.json', Buffer.from(JSON.stringify({upstreamBuild:buildId,upstreamVersion:version,offlineVersion:await offlineVersion(),sourceDigest:await sourceDigest(snapshotRoot),variant:'unlock-all',league:info.roster.length,lab:info.lab.length,items:info.items.length,achievements:info.quests.length,medals:info.biomes.filter(b=>Number.isFinite(b.size)).length*3,medalRank:info.medalRanks.length,statusIcons,reactionIcons,itemIcons,builder:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()},null,2)));
