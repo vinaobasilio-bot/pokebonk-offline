@@ -43,10 +43,27 @@ async function loadDragon(run, state) {
   const bounds = new Box3().setFromObject(model);
   const size = bounds.getSize(new Vector3());
   const center = bounds.getCenter(new Vector3());
-  const scale = 2.5 / Math.max(size.x, size.y, size.z);
+  const scale = 4.8 / Math.max(size.x, size.y, size.z);
   if (!Number.isFinite(scale) || scale <= 0) {
     releaseModel(model);
     return;
+  }
+
+  // The GLB defaults to a fully metallic surface, but this scene has no environment map.
+  // A diffuse surface and a textured fill keep its colors readable in darker arenas.
+  const materials = new Set();
+  model.traverse(node => {
+    for (const material of Array.isArray(node.material) ? node.material : [node.material]) {
+      if (material?.isMeshStandardMaterial) materials.add(material);
+    }
+  });
+  for (const material of materials) {
+    material.metalness = 0;
+    material.roughness = 0.85;
+    material.emissive.set(0xffffff);
+    material.emissiveMap = material.map;
+    material.emissiveIntensity = 0.6;
+    material.needsUpdate = true;
   }
 
   model.scale.multiplyScalar(scale);
