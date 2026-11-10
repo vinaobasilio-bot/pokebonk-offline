@@ -155,6 +155,12 @@ for(const kind of ['chest','freechest','cursedchest']){
   if(!files.has(key))throw new Error(`Modelo do item de campo ausente: ${key}`);
   files.set(key,pot);
 }
+const potRenderModule=modules.menus.name;
+const potRender=contents(potRenderModule);
+const potRenderHook='s=r.group;if(s&&!s.userData.sprite&&this.hullLod(s,o)';
+if(potRender.split(potRenderHook).length!==2)throw new Error('Ponto de renderização dos potes mudou');
+files.set(potRenderModule,Buffer.from(potRender.replace(potRenderHook,
+  's=r.group;if(s&&(r.kind===`chest`||r.kind===`freechest`||r.kind===`cursedchest`)){const camera=e.r.camera.position;s.rotation.y=Math.atan2(camera.x-r.x,camera.z-r.z)}if(s&&!s.userData.sprite&&this.hullLod(s,o)')));
 files.set('version.json', Buffer.from(JSON.stringify({build:buildId,version})));
 files.set('resource-audit.json',Buffer.from(JSON.stringify({contractDigest:resourceContractDigest(resourceContract)})));
 files.set('offline-build.json', Buffer.from(JSON.stringify({upstreamBuild:buildId,upstreamVersion:version,offlineVersion:await offlineVersion(),sourceDigest:await sourceDigest(snapshotRoot),variant:'unlock-all',league:info.roster.length,lab:info.lab.length,items:info.items.length,achievements:info.quests.length,medals:info.biomes.filter(b=>Number.isFinite(b.size)).length*3,medalRank:info.medalRanks.length,statusIcons,reactionIcons,itemIcons,builder:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()},null,2)));
