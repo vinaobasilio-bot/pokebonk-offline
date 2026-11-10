@@ -183,23 +183,30 @@ for(const index of potUvs){
     accessor.max[1]=1-min;
   }
 }
-const potJson=Buffer.from(JSON.stringify(potGltf));
-const potPadding=Buffer.alloc((4-potJson.length%4)%4,0x20);
-const potHeader=Buffer.from(sourcePot.subarray(0,20));
-potHeader.writeUInt32LE(sourcePot.length-potJsonLength+potJson.length+potPadding.length,8);
-potHeader.writeUInt32LE(potJson.length+potPadding.length,12);
-const pot=Buffer.concat([potHeader,potJson,potPadding,potBin]);
+function packPot(){
+  const potJson=Buffer.from(JSON.stringify(potGltf));
+  const potPadding=Buffer.alloc((4-potJson.length%4)%4,0x20);
+  const potHeader=Buffer.from(sourcePot.subarray(0,20));
+  potHeader.writeUInt32LE(sourcePot.length-potJsonLength+potJson.length+potPadding.length,8);
+  potHeader.writeUInt32LE(potJson.length+potPadding.length,12);
+  return Buffer.concat([potHeader,potJson,potPadding,potBin]);
+}
+const pot=packPot();
+for(const material of potGltf.materials){
+  material.pbrMetallicRoughness.baseColorFactor=[0.91,0.42,1,1];
+}
+const cursedPot=packPot();
 for(const kind of ['chest','freechest','cursedchest']){
   const key=`assets/models/${kind}.glb`;
   if(!files.has(key))throw new Error(`Modelo do item de campo ausente: ${key}`);
-  files.set(key,pot);
+  files.set(key,kind==='cursedchest'?cursedPot:pot);
 }
 const potRenderModule=modules.menus.name;
 const potRender=contents(potRenderModule);
 const potRenderHook='s=r.group;if(s&&!s.userData.sprite&&this.hullLod(s,o)';
 if(potRender.split(potRenderHook).length!==2)throw new Error('Ponto de renderização dos potes mudou');
-files.set(potRenderModule,Buffer.from(potRender.replace(potRenderHook,
-  's=r.group;if(s&&(r.kind===`chest`||r.kind===`freechest`||r.kind===`cursedchest`)){const camera=e.r.camera.position;s.rotation.y=Math.atan2(camera.x-r.x,camera.z-r.z);if(s.userData.potChildren!==s.children.length){s.userData.potChildren=s.children.length;s.traverse(node=>{if(node.material===Md)node.visible=false})}}else if(s&&!s.userData.sprite&&this.hullLod(s,o)')));
+files.set(potRenderModule,Buffer.from(potRender.replace('WF(9430271,1.5,1.6,46,{near:[6,18],fadePow:.7,gain:1.4})','WF(9497855,1.25,2.3,32,{near:[6,18],fadePow:.7,gain:.8})').replace(potRenderHook,
+  's=r.group;if(s&&(r.kind===`chest`||r.kind===`freechest`||r.kind===`cursedchest`)){if(r.kind===`freechest`&&!r.used&&!r.beacon){const aura=WF(9497855,1.25,2.3,32,{near:[6,18],fadePow:.7,gain:.8});aura.position.set(r.x,r.y,r.z);this.group.add(aura);r.beacon=aura}const camera=e.r.camera.position;s.rotation.y=Math.atan2(camera.x-r.x,camera.z-r.z);if(s.userData.potChildren!==s.children.length){s.userData.potChildren=s.children.length;s.traverse(node=>{if(node.material===Md)node.visible=false})}}else if(s&&!s.userData.sprite&&this.hullLod(s,o)')));
 files.set('version.json', Buffer.from(JSON.stringify({build:buildId,version})));
 files.set('resource-audit.json',Buffer.from(JSON.stringify({contractDigest:resourceContractDigest(resourceContract)})));
 files.set('offline-build.json', Buffer.from(JSON.stringify({upstreamBuild:buildId,upstreamVersion:version,offlineVersion:await offlineVersion(),sourceDigest:await sourceDigest(snapshotRoot),variant:'unlock-all',league:info.roster.length,lab:info.lab.length,items:info.items.length,achievements:info.quests.length,medals:info.biomes.filter(b=>Number.isFinite(b.size)).length*3,medalRank:info.medalRanks.length,statusIcons,reactionIcons,itemIcons,builder:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()},null,2)));
