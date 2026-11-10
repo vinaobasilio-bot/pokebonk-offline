@@ -65,19 +65,56 @@ for(const id of dragonStages){
     if(files.has(key))files.set(key,asset);
   }
 }
+const models=[
+  {id:1,slots:[1,2,3],name:'Kuriboh',file:'kuriboh.glb',portrait:'kuriboh',hash:'fac98d67f3d45d126c8d81c5c8d6dd9eb0326803dad20b2da02b2d999789fafb'},
+  {id:4,slots:dragonStages,name:dragonName,file:'blue-eyes-ultimate-dragon.glb',portrait:null,hash:'42ab9135ffd90a8c19bf0f4799169e1478b07fa81e798a5f1e11165d66986090'},
+  {id:7,slots:[7,8,9],name:'Dragão Branco de Olhos Azuis',file:'blue-eyes-white-dragon.glb',portrait:'dragao-branco',hash:'2fe9fb209591e6ba815f365dde3cc1078436657b5eaf13454fbd70e96e2819d6'},
+  {id:10,slots:[10,11,12],name:'Dragão Bebê',file:'Dragao Bebe.glb',portrait:'dragao-bebe',hash:'a5bc7ba1659f487f1ce50cfa55cfe16b54eb2554f405083d526ab1f39ee3f9a3'},
+];
+const displayNames=new Map(dragonStages.map(id=>[id,dragonName]));
+const availableModels=await Promise.all(models.map(async model=>{
+  try {
+    const response=await fetch(`https://yugibonk.com.br/assets/modelos/${encodeURIComponent(model.file)}`,{signal:AbortSignal.timeout(20000)});
+    if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    const data=Buffer.from(await response.arrayBuffer());
+    if(sha(data)!==model.hash)throw new Error('Modelo 3D diferente da versão esperada');
+    const portrait=model.portrait?await readFile(`mods/yugioh/${model.portrait}.png`):null;
+    return {model,data,portrait};
+  }catch(error){
+    console.warn(`Modelo 3D indisponível: ${model.name}`,error);
+    return null;
+  }
+}));
+const activeModels:Record<number,number>={};
+for(const asset of availableModels){
+  if(!asset)continue;
+  const {model,data,portrait}=asset;
+  files.set(`assets/yugioh/${model.id}.glb`,data);
+  for(const id of model.slots){
+    activeModels[id]=model.id;
+    displayNames.set(id,model.name);
+    if(portrait){
+      for(const folder of ['icons','portraits','portraits-shiny']){
+        const key=`assets/${folder}/${id}.png`;
+        if(files.has(key))files.set(key,portrait);
+      }
+    }
+  }
+}
+for(const entry of catalog){
+  const name=displayNames.get(entry.id);
+  if(name)entry.name=name;
+}
 files.set('data/pokemon.json',Buffer.from(JSON.stringify(catalog)));
 files.set('data/sprites.json',Buffer.from(JSON.stringify(sprites)));
 for(const [key,data] of files){
   if(!/^data\/i18n\/[^/]+\.json$/.test(key))continue;
-  const localized=data.toString().replace(/"([456])"\s*:\s*"(?:Charmander|Charmeleon|Charizard)"/g,(_,id:string)=>`"${id}":${JSON.stringify(dragonName)}`);
-  files.set(key,Buffer.from(localized));
+  const localized=JSON.parse(data.toString());
+  if(!localized.pokemon)continue;
+  for(const [id,name] of displayNames)localized.pokemon[id]=name;
+  files.set(key,Buffer.from(JSON.stringify(localized)));
 }
-// Download the same model used by Yugibonk, pinning the exact file for this build.
-try {
-  const response=await fetch('https://yugibonk.com.br/assets/modelos/blue-eyes-ultimate-dragon.glb',{signal:AbortSignal.timeout(20000)});
-  if(!response.ok)throw new Error(`HTTP ${response.status}`);
-  const model=Buffer.from(await response.arrayBuffer());
-  if(sha(model)!=='42ab9135ffd90a8c19bf0f4799169e1478b07fa81e798a5f1e11165d66986090')throw new Error('Modelo 3D diferente da versão esperada');
+if(Object.keys(activeModels).length){
   const playerDraw='t.push(this.pos.x,this.pos.y,this.pos.z,n,r,l,this.renderScale,';
   const runDispose='dispose(){Rr(0),this.coop?.dispose()';
   const game=contents(mainKey);
@@ -91,9 +128,7 @@ try {
         .replace(runDispose,'dispose(){disposeDragon(this);Rr(0),this.coop?.dispose()')
   ));
   files.set('assets/yugioh/dragon-model.js',dragonModule);
-  files.set('assets/yugioh/blue-eyes-ultimate-dragon.glb',model);
-}catch(error){
-  console.warn('Modelo 3D não incluído. O jogo usará o sprite do dragão.',error);
+  files.set('assets/yugioh/roster.js',Buffer.from('export default '+JSON.stringify(activeModels)+';'));
 }
 files.set('version.json', Buffer.from(JSON.stringify({build:buildId,version})));
 files.set('resource-audit.json',Buffer.from(JSON.stringify({contractDigest:resourceContractDigest(resourceContract)})));

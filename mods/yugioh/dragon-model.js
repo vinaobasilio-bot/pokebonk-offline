@@ -1,11 +1,13 @@
 import { I as Group, g as Box3, bt as Vector3, p as GLTFLoader, q as MeshBasicMaterial } from '../three-C6GX2F5d.js';
+import roster from './roster.js';
 
 const dragons = new WeakMap();
-const slots = new Set([4, 5, 6]);
+
 
 export function drawDragon(player, x, z) {
   const run = player.run;
-  if (!slots.has(run.startSpecies) || !slots.has(player.speciesId) || run.player !== player) {
+  const modelId = roster[run.startSpecies];
+  if (!modelId || roster[player.speciesId] !== modelId || run.player !== player) {
     const previous = dragons.get(run);
     if (previous?.group) previous.group.visible = false;
     return false;
@@ -15,7 +17,7 @@ export function drawDragon(player, x, z) {
   if (!state) {
     state = { group: null, disposed: false };
     dragons.set(run, state);
-    loadDragon(run, state).catch(error => console.warn('Dragão 3D indisponível:', error));
+    loadDragon(run, state, modelId).catch(error => console.warn('Dragão 3D indisponível:', error));
   }
   if (!state.group) return false;
 
@@ -32,8 +34,8 @@ export function drawDragon(player, x, z) {
   return true;
 }
 
-async function loadDragon(run, state) {
-  const url = new URL('./blue-eyes-ultimate-dragon.glb', import.meta.url);
+async function loadDragon(run, state, modelId) {
+  const url = new URL('./' + modelId + '.glb', import.meta.url);
   const gltf = await new GLTFLoader().loadAsync(url.href);
   const model = gltf.scene;
   if (state.disposed) {
@@ -43,7 +45,7 @@ async function loadDragon(run, state) {
   const bounds = new Box3().setFromObject(model);
   const size = bounds.getSize(new Vector3());
   const center = bounds.getCenter(new Vector3());
-  const scale = 4.8 / Math.max(size.x, size.y, size.z);
+  const scale = (modelId === 1 ? 2.8 : modelId === 10 ? 3.5 : 4.8) / Math.max(size.x, size.y, size.z);
   if (!Number.isFinite(scale) || scale <= 0) {
     releaseModel(model);
     return;
@@ -78,7 +80,7 @@ async function loadDragon(run, state) {
   const group = new Group();
   group.add(model);
   group.visible = false;
-  const clip = gltf.animations.find(animation => animation.name === 'Pairar');
+  const clip = gltf.animations.find(animation => animation.name === 'Pairar' || animation.name === 'Flutuar');
   const tracks = [];
   for (const track of clip?.tracks ?? []) {
     const split = track.name.lastIndexOf('.');
