@@ -206,7 +206,18 @@ const potRender=contents(potRenderModule);
 const potRenderHook='s=r.group;if(s&&!s.userData.sprite&&this.hullLod(s,o)';
 if(potRender.split(potRenderHook).length!==2)throw new Error('Ponto de renderização dos potes mudou');
 files.set(potRenderModule,Buffer.from(potRender.replace('WF(9430271,1.5,1.6,46,{near:[6,18],fadePow:.7,gain:1.4})','WF(9497855,1.25,2.3,32,{near:[6,18],fadePow:.7,gain:.8})').replace(potRenderHook,
-  's=r.group;if(s&&(r.kind===`chest`||r.kind===`freechest`||r.kind===`cursedchest`)){if(r.kind===`freechest`&&!r.used&&!r.beacon){const aura=WF(9497855,1.25,2.3,32,{near:[6,18],fadePow:.7,gain:.8});aura.position.set(r.x,r.y,r.z);this.group.add(aura);r.beacon=aura}const camera=e.r.camera.position;s.rotation.y=Math.atan2(camera.x-r.x,camera.z-r.z);if(s.userData.potChildren!==s.children.length){s.userData.potChildren=s.children.length;s.traverse(node=>{if(node.material===Md)node.visible=false})}}else if(s&&!s.userData.sprite&&this.hullLod(s,o)')));
+  's=r.group;if(s&&(r.kind===`chest`||r.kind===`freechest`||r.kind===`cursedchest`||r.kind===`rock`)){if(r.kind===`freechest`&&!r.used&&!r.beacon){const aura=WF(9497855,1.25,2.3,32,{near:[6,18],fadePow:.7,gain:.8});aura.position.set(r.x,r.y,r.z);this.group.add(aura);r.beacon=aura}const camera=e.r.camera.position;s.rotation.y=Math.atan2(camera.x-r.x,camera.z-r.z);if(s.userData.potChildren!==s.children.length){s.userData.potChildren=s.children.length;s.traverse(node=>{if(node.material===Md)node.visible=false})}}else if(s&&!s.userData.sprite&&this.hullLod(s,o)')));
+files.set('assets/models/goldrock.glb',await readFile('mods/yugioh/duel-card.glb'));
+const fieldCardMenu=contents(potRenderModule)
+  .replace('case`rock`:return c(`Golpe Roca`);','case`rock`:return `Virar Carta de Duelo`;')
+  .replace('11049610,14,6,A.Rock,.6,.6,14','16763504,14,6,A.Star,.6,.6,14');
+files.set(potRenderModule,Buffer.from(fieldCardMenu));
+for(const [key,data] of files){
+  if(!/\.(?:js|json|html)$/.test(key))continue;
+  const source=data.toString();
+  const renamed=source.replaceAll('₽','PD').replace(/Pok[eé]d[oó]l(?:ar(?:es)?|lares)/gi,'Pontos de Duelo');
+  if(renamed!==source)files.set(key,Buffer.from(renamed));
+}
 files.set('version.json', Buffer.from(JSON.stringify({build:buildId,version})));
 files.set('resource-audit.json',Buffer.from(JSON.stringify({contractDigest:resourceContractDigest(resourceContract)})));
 files.set('offline-build.json', Buffer.from(JSON.stringify({upstreamBuild:buildId,upstreamVersion:version,offlineVersion:await offlineVersion(),sourceDigest:await sourceDigest(snapshotRoot),variant:'unlock-all',league:info.roster.length,lab:info.lab.length,items:info.items.length,achievements:info.quests.length,medals:info.biomes.filter(b=>Number.isFinite(b.size)).length*3,medalRank:info.medalRanks.length,statusIcons,reactionIcons,itemIcons,builder:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()},null,2)));
